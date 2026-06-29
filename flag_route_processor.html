@@ -162,10 +162,37 @@ tbody tr.done-row td:first-child{border-left-color:#9CA3AF !important;}
 .progress-fill{background:var(--green);height:100%;border-radius:20px;transition:width .3s;}
 .resume-note{font-size:11px;color:var(--green);font-weight:600;margin-top:5px;}
 
+/* ── MAPPING SCREEN ── */
+#mapping-screen{display:none;min-height:100vh;padding:32px 20px;background:var(--bg);}
+.map-wrap{max-width:720px;margin:0 auto;}
+.map-wrap h1{font-size:22px;font-weight:600;margin-bottom:4px;text-align:center;}
+.map-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:24px;}
+.map-saved-banner{background:#E8F5EC;border:1px solid var(--green);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--green);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.map-section{margin-bottom:20px;}
+.map-section h3{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.map-row{display:flex;align-items:center;gap:12px;padding:8px 12px;background:white;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
+.map-row.matched{border-color:var(--green);background:#FAFFF8;}
+.map-row.required.unmatched{border-color:var(--orange);background:#FFFBF5;}
+.map-label{flex:1;font-size:13px;font-weight:500;min-width:160px;}
+.map-label .ml-desc{font-size:11px;color:var(--muted);font-weight:400;}
+.map-arrow{color:var(--muted);font-size:14px;flex-shrink:0;}
+.map-select{flex:1.5;}
+.map-select select{width:100%;font-size:13px;padding:6px 10px;}
+.map-check{width:20px;text-align:center;font-size:14px;flex-shrink:0;}
+.map-actions{display:flex;gap:10px;justify-content:center;margin-top:24px;}
+.map-confirm{background:var(--navy);color:white;border:none;border-radius:10px;padding:12px 32px;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .2s;}
+.map-confirm:hover{background:#2D3F6B;}
+.map-confirm:disabled{background:#9CA3AF;cursor:not-allowed;}
+.map-back{background:none;border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:14px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.map-back:hover{background:white;}
+.map-edit-link{font-size:12px;color:#4F46E5;cursor:pointer;text-decoration:underline;margin-left:8px;}
+
 @media(max-width:700px){
   .header,.stats,.filters,.legend,.twrap,.sumbar{padding-left:12px;padding-right:12px;}
   .header{flex-direction:column;align-items:flex-start;}
   .hdr-right{margin-left:0;}
+  .map-row{flex-wrap:wrap;}
+  .map-label,.map-select{flex:1 1 100%;}
 }
 </style>
 </head>
@@ -216,6 +243,23 @@ tbody tr.done-row td:first-child{border-left-color:#9CA3AF !important;}
   </div>
 </div>
 
+<!-- ══════════════════ MAPPING SCREEN ══════════════════ -->
+<div id="mapping-screen">
+  <div class="map-wrap">
+    <div style="font-size:40px;text-align:center;margin-bottom:12px;">🔗</div>
+    <h1>Map Your Columns</h1>
+    <p class="map-sub">Match your spreadsheet's columns to the fields the processor needs. We've auto-matched what we could.</p>
+    <div class="map-saved-banner" id="map-saved-banner" style="display:none;">
+      ✅ <span>We found a saved mapping for this spreadsheet format. Review and confirm below.</span>
+    </div>
+    <div id="map-fields"></div>
+    <div class="map-actions">
+      <button class="map-back" onclick="goBackFromMapping()">← Back</button>
+      <button class="map-confirm" id="map-confirm-btn" onclick="confirmMapping()">Confirm &amp; Process →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════ DASHBOARD SCREEN ══════════════════ -->
 <div id="dashboard-screen">
   <div class="header">
@@ -229,6 +273,7 @@ tbody tr.done-row td:first-child{border-left-color:#9CA3AF !important;}
         <div style="font-size:10px;color:#A0AAC0;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Next Holiday</div>
         <div style="font-size:13px;font-weight:600;color:#F5C842;" id="next-hol">—</div>
       </div>
+      <button class="back-btn" onclick="editMapping()">🔗 Edit Mapping</button>
       <button class="back-btn" onclick="goBack()">← New File</button>
     </div>
   </div>
@@ -528,7 +573,160 @@ function setFile(f){
 
 function goBack(){
   document.getElementById('dashboard-screen').style.display = 'none';
+  document.getElementById('mapping-screen').style.display = 'none';
   document.getElementById('upload-screen').style.display = 'flex';
+}
+
+function editMapping(){
+  document.getElementById('dashboard-screen').style.display = 'none';
+  showMappingScreen(pendingHeaders, pendingMapping, false);
+}
+
+// ── COLUMN MAPPING SYSTEM ─────────────────────────────────────────────────────
+
+const FIELD_DEFS = [
+  {key:'first',     label:'First Name',          required:true,  aliases:['first','first name','fname','first_name']},
+  {key:'last',      label:'Last Name',           required:true,  aliases:['last','last name','lname','last_name','surname']},
+  {key:'num',       label:'Street Number',       required:true,  aliases:['no.','no','number','street number','house #','house','street no','st #','st no']},
+  {key:'street',    label:'Street Name',         required:true,  aliases:['street','street name','address','road']},
+  {key:'sub',       label:'Subdivision',         required:true,  aliases:['sub','subdivision','neighborhood','community','subdiv']},
+  {key:'route',     label:'Route Code',          required:true,  aliases:['route','route code','rt','route #']},
+  {key:'scout',     label:'Scout / Volunteer',   required:true,  aliases:['scout','volunteer','assigned to','rep']},
+  {key:'rn',        label:'New or Renewal',      required:true,  aliases:['(r)en\n(n)ew','r/n','ren','new/renewal','renewal','type','(r)en','new or renewal'],
+                     desc:'Column with R for renewal, N for new'},
+  {key:'started',   label:'Started / Payment Date', required:true, aliases:['started','start date','date started','date paid','payment date','paid date','start']},
+  {key:'renewed',   label:'Renewed Date',        required:true,  aliases:['renewed','renewal date','date renewed','renew date']},
+  {key:'check_num', label:'Check # / Payment Method', required:true, aliases:['check #','check','check no','check number','payment method','method','ck #']},
+  {key:'paid',      label:'Amount Paid',         required:true,  aliases:['paid','amount','amount paid','$','payment amount']},
+  {key:'status',    label:'Status',              required:false, aliases:['status','account status','active/expired']},
+  {key:'exp_year',  label:'Expiration Year',     required:false, aliases:['expiration year','exp year','exp','expires','year']},
+  {key:'first_hol', label:'First Holiday (spreadsheet)', required:false, aliases:['first holiday','start holiday','1st holiday']},
+  {key:'last_hol',  label:'Last Holiday (spreadsheet)',  required:false, aliases:['last holiday','end holiday','final holiday']},
+  {key:'flags',     label:'# of Flags',          required:false, aliases:['# of flags','flags','flag count','number of flags','num flags']},
+  {key:'phone',     label:'Phone',               required:false, aliases:['phone','phone number','tel','telephone','cell','mobile']},
+  {key:'email',     label:'Email',               required:false, aliases:['email','email address','e-mail']},
+  {key:'notes',     label:'Notes',               required:false, aliases:['notes','comments','special instructions','instructions']},
+];
+
+function headerFingerprint(headers){
+  return headers.map(h=>h.toLowerCase().trim()).sort().join('|');
+}
+
+function saveMappingProfile(headers, mapping){
+  const fp = headerFingerprint(headers);
+  const profiles = JSON.parse(localStorage.getItem('flagproc_mappings') || '{}');
+  profiles[fp] = mapping;
+  localStorage.setItem('flagproc_mappings', JSON.stringify(profiles));
+}
+
+function loadMappingProfile(headers){
+  const fp = headerFingerprint(headers);
+  const profiles = JSON.parse(localStorage.getItem('flagproc_mappings') || '{}');
+  return profiles[fp] || null;
+}
+
+function autoMatchHeaders(headers){
+  const mapping = {};
+  const lcHeaders = headers.map(h => h.toLowerCase().trim());
+  const used = new Set();
+
+  // Pass 1: exact matches only
+  for(const field of FIELD_DEFS){
+    for(const alias of field.aliases){
+      const idx = lcHeaders.findIndex((h,i) => !used.has(i) && h === alias);
+      if(idx >= 0){ mapping[field.key] = idx; used.add(idx); break; }
+    }
+  }
+
+  // Pass 2: partial matches for unmatched fields
+  for(const field of FIELD_DEFS){
+    if(mapping[field.key] !== undefined) continue;
+    for(const alias of field.aliases){
+      const idx = lcHeaders.findIndex((h,i) => !used.has(i) && h.includes(alias));
+      if(idx >= 0){ mapping[field.key] = idx; used.add(idx); break; }
+    }
+    // For rn field, also try partial matches
+    if(mapping[field.key] === undefined && field.key === 'rn'){
+      const idx = lcHeaders.findIndex((h,i) => !used.has(i) && (h.includes('(r)') || h.includes('r/n')));
+      if(idx >= 0){ mapping[field.key] = idx; used.add(idx); }
+    }
+  }
+
+  return mapping;
+}
+
+let pendingRaw = null, pendingHeaders = null, pendingHeaderRow = -1, pendingMapping = {};
+
+function showMappingScreen(headers, mapping, isSaved){
+  pendingHeaders = headers;
+  pendingMapping = {...mapping};
+
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('mapping-screen').style.display = 'block';
+  document.getElementById('map-saved-banner').style.display = isSaved ? 'flex' : 'none';
+
+  const container = document.getElementById('map-fields');
+  const required = FIELD_DEFS.filter(f => f.required);
+  const optional = FIELD_DEFS.filter(f => !f.required);
+
+  function buildRows(fields){
+    return fields.map(f => {
+      const matched = pendingMapping[f.key] !== undefined;
+      const reqClass = f.required && !matched ? ' required unmatched' : '';
+      const matchClass = matched ? ' matched' : '';
+      const opts = headers.map((h,i) =>
+        `<option value="${i}" ${pendingMapping[f.key]===i?'selected':''}>${h}</option>`
+      ).join('');
+      const desc = f.desc ? `<div class="ml-desc">${f.desc}</div>` : '';
+      return `<div class="map-row${matchClass}${reqClass}" id="map-row-${f.key}">
+        <div class="map-check">${matched ? '✅' : (f.required ? '⚠️' : '—')}</div>
+        <div class="map-label">${f.label}${f.required?' <span style="color:var(--red)">*</span>':''}${desc}</div>
+        <div class="map-arrow">→</div>
+        <div class="map-select">
+          <select onchange="updateMapField('${f.key}', this.value)">
+            <option value="">— Skip —</option>
+            ${opts}
+          </select>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  container.innerHTML = `
+    <div class="map-section"><h3>Required Fields</h3>${buildRows(required)}</div>
+    <div class="map-section"><h3>Optional Fields</h3>${buildRows(optional)}</div>
+  `;
+  updateConfirmButton();
+}
+
+function updateMapField(key, val){
+  if(val === '') delete pendingMapping[key];
+  else pendingMapping[key] = parseInt(val);
+
+  const field = FIELD_DEFS.find(f => f.key === key);
+  const row = document.getElementById('map-row-' + key);
+  const matched = pendingMapping[key] !== undefined;
+  row.className = 'map-row' + (matched ? ' matched' : (field.required ? ' required unmatched' : ''));
+  row.querySelector('.map-check').textContent = matched ? '✅' : (field.required ? '⚠️' : '—');
+  updateConfirmButton();
+}
+
+function updateConfirmButton(){
+  const required = FIELD_DEFS.filter(f => f.required);
+  const allMapped = required.every(f => pendingMapping[f.key] !== undefined);
+  document.getElementById('map-confirm-btn').disabled = !allMapped;
+}
+
+function goBackFromMapping(){
+  document.getElementById('mapping-screen').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'flex';
+  pendingRaw = null;
+}
+
+function confirmMapping(){
+  saveMappingProfile(pendingHeaders, pendingMapping);
+  document.getElementById('mapping-screen').style.display = 'none';
+  processMapped(pendingMapping);
 }
 
 // ── MAIN PROCESSING ───────────────────────────────────────────────────────────
@@ -548,149 +746,150 @@ function processFile(){
       const ws = wb.Sheets[sheetName];
       const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
 
-      // Find header row (look for "Scout" column)
+      // Find header row — look for a row with 5+ non-empty cells
       let headerRow = -1;
       for(let i=0;i<Math.min(10,raw.length);i++){
-        if(raw[i].some(c=>String(c).trim().toLowerCase()==='scout')){
+        const nonEmpty = raw[i].filter(c=>String(c).trim() !== '').length;
+        if(nonEmpty >= 5){
           headerRow = i; break;
         }
       }
-      if(headerRow < 0){ showError('Could not find header row. Make sure this is the subscriptions sheet.'); btn.textContent='⚙️ Process Spreadsheet'; btn.disabled=false; return; }
+      if(headerRow < 0){ showError('Could not find a header row with enough columns.'); btn.textContent='⚙️ Process Spreadsheet'; btn.disabled=false; return; }
 
-      const headers = raw[headerRow].map(h=>String(h).trim().toLowerCase());
-      const col = name => headers.indexOf(name);
+      const headers = raw[headerRow].map(h=>String(h).trim());
+      pendingRaw = raw;
+      pendingHeaderRow = headerRow;
 
-      // Column indices
-      const C = {
-        first_hol: col('first holiday'),
-        last_hol:  col('last holiday'),
-        exp_year:  col('expiration year'),
-        status:    col('status'),
-        started:   col('started'),
-        check_num: col('check #'),
-        paid:      col('paid'),
-        rn:        headers.findIndex(h=>h.includes('(r)en') || h.includes('ren') || h==='r/n' || h==='(r)en\n(n)ew'),
-        renewed:   col('renewed'),
-        flags:     col('# of flags'),
-        num:       col('no.'),
-        street:    col('street'),
-        sub:       col('sub'),
-        first:     col('first'),
-        last:      col('last'),
-        route:     col('route'),
-        scout:     col('scout'),
-        phone:     col('phone'),
-        email:     col('email'),
-        notes:     col('notes'),
-      };
+      // Check for saved mapping
+      const saved = loadMappingProfile(headers);
+      const autoMap = autoMatchHeaders(headers);
+      const mapping = saved || autoMap;
 
-      // Fallback for rn column
-      if(C.rn < 0) C.rn = headers.findIndex(h=>h.includes('(r)') || h.includes('ren'));
+      showMappingScreen(headers, mapping, !!saved);
+      btn.textContent='⚙️ Process Spreadsheet'; btn.disabled=false;
 
-      const rows = [];
-      for(let i = headerRow+1; i < raw.length; i++){
-        const r = raw[i];
-        if(!r || r.length < 5) continue;
-        const status = String(r[C.status]||'').trim().toUpperCase();
-        // Status column contains Excel formulas that show #REF! in Google Sheets/SheetJS.
-        // Fall back to expiration year: 2026+ = active, 2025 or earlier = expired.
-        const expYear = String(r[C.exp_year]||'').trim();
-        const isActive = (status === 'GOOD') ||
-                         (status === '#REF!' && (expYear === '2026' || expYear === '2027')) ||
-                         (status === '' && (expYear === '2026' || expYear === '2027'));
-        if(!isActive) continue;
-        const scoutRaw = String(r[C.scout]||'').trim();
-        const route    = String(r[C.route]||'').trim();
-        const scoutClean = resolveScout(scoutRaw, route);
-        if(!scoutClean) continue;
+    } catch(err){
+      showError('Error reading file: ' + err.message);
+      btn.textContent='⚙️ Process Spreadsheet'; btn.disabled=false;
+    }
+  };
+  reader.readAsArrayBuffer(selectedFile);
+}
 
-        const rnRaw = String(r[C.rn]||'').trim().toUpperCase();
-        const isNew = rnRaw === 'N';
-        const startedRaw = r[C.started];
-        const renewedRaw = r[C.renewed];
+function processMapped(C){
+  const raw = pendingRaw;
+  const headerRow = pendingHeaderRow;
+  const col = key => C[key] !== undefined ? C[key] : -1;
+  const cell = (r, key) => col(key) >= 0 ? r[col(key)] : '';
+  const hasCol = key => col(key) >= 0;
 
-        // Payment date = renewed date for renewals, started date for new subs
-        // Fall back to whichever column has a date if the primary one is empty
-        let dateVal = parseExcelDate(isNew ? startedRaw : renewedRaw);
-        if(!dateVal) dateVal = parseExcelDate(isNew ? renewedRaw : startedRaw);
+  try {
+    const rows = [];
+    for(let i = headerRow+1; i < raw.length; i++){
+      const r = raw[i];
+      if(!r || r.length < 3) continue;
 
-        // Original subscription date from started column, fall back to renewed
-        const startedDate = parseExcelDate(startedRaw) || parseExcelDate(renewedRaw);
-
-        // Years of participation = current year minus started year (min 1)
-        const thisYear = new Date().getFullYear();
-        const years = startedDate ? Math.max(1, thisYear - startedDate.getFullYear()) : null;
-
-        // Format dates for display
-        const fmtDate = d => d ? `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` : '';
-
-        const correctFirst = firstHolidayFromDate(dateVal);
-        const correctLast  = correctFirst ? lastHolidayFromFirst(correctFirst) : null;
-        const firstHolSS   = String(r[C.first_hol]||'').trim();
-        const ssFirst      = SS_MAP[firstHolSS] || firstHolSS;
-        const mismatch     = (correctFirst && ssFirst !== correctFirst) ? `Should be ${correctFirst}` : '';
-
-        const checkNum = r[C.check_num];
-        const amount   = r[C.paid];
-        const ps = payStatus(checkNum, amount);
-
-        const amtStr  = String(amount||'').trim();
-        const ckStr   = String(checkNum||'').trim();
-        let payDisplay = ckStr;
-        if(ckStr.toLowerCase().includes('paypal')) payDisplay = 'PayPal' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
-        else if(ckStr.toLowerCase()==='mailed check') payDisplay = 'Check mailed';
-        else if(ckStr.toLowerCase()==='cash') payDisplay = 'Cash' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
-        else if(ckStr.toLowerCase()==='m1214') payDisplay = 'Check M1214' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
-        else if(ckStr.toLowerCase()==='pending') payDisplay = 'Pending';
-        else if(ckStr.toLowerCase().includes('pick up')) payDisplay = 'Pick up';
-        else if(ckStr && !isNaN(ckStr)) payDisplay = `Ck #${ckStr}` + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
-
-        rows.push({
-          scout: scoutClean,
-          route:    String(r[C.route]||'').trim(),
-          name:     (String(r[C.first]||'').trim()+' '+String(r[C.last]||'').trim()).trim(),
-          address:  (String(r[C.num]||'').trim()+' '+String(r[C.street]||'').trim()).trim(),
-          subdivision: String(r[C.sub]||'').trim(),
-          phone:    String(r[C.phone]||'').trim(),
-          email:    String(r[C.email]||'').trim(),
-          rn:       isNew ? 'New' : 'Renewal',
-          date_parsed:       dateVal ? `${dateVal.getFullYear()}-${String(dateVal.getMonth()+1).padStart(2,'0')}-${String(dateVal.getDate()).padStart(2,'0')}` : '',
-          payment_date_display: fmtDate(dateVal),
-          started_display:   fmtDate(startedDate),
-          years:             years,
-          first_hol_ss: firstHolSS,
-          correct_first: correctFirst||'',
-          correct_last:  correctLast||'',
-          mismatch,
-          pay_status: ps,
-          pay_display: payDisplay,
-        });
+      // Determine active/expired status
+      const status = hasCol('status') ? String(cell(r,'status')||'').trim().toUpperCase() : '';
+      const expYear = hasCol('exp_year') ? String(cell(r,'exp_year')||'').trim() : '';
+      let isActive;
+      if(hasCol('status') || hasCol('exp_year')){
+        isActive = (status === 'GOOD') ||
+                   (status === '#REF!' && (expYear === '2026' || expYear === '2027')) ||
+                   (status === '' && (expYear === '2026' || expYear === '2027'));
+      } else {
+        // No status/exp columns — treat all rows with a name as active
+        const fname = String(cell(r,'first')||'').trim();
+        const lname = String(cell(r,'last')||'').trim();
+        if(!fname && !lname) continue;
+        isActive = true;
       }
+      if(!isActive) continue;
 
-      // ── PARSE EXPIRED ROWS ──────────────────────────────────────────────
-      const expiredRows = [];
+      const scoutRaw = String(cell(r,'scout')||'').trim();
+      const route    = String(cell(r,'route')||'').trim();
+      const scoutClean = resolveScout(scoutRaw, route);
+      if(!scoutClean) continue;
+
+      const rnRaw = String(cell(r,'rn')||'').trim().toUpperCase();
+      const isNew = rnRaw === 'N';
+      const startedRaw = cell(r,'started');
+      const renewedRaw = cell(r,'renewed');
+
+      let dateVal = parseExcelDate(isNew ? startedRaw : renewedRaw);
+      if(!dateVal) dateVal = parseExcelDate(isNew ? renewedRaw : startedRaw);
+
+      const startedDate = parseExcelDate(startedRaw) || parseExcelDate(renewedRaw);
+
+      const thisYear = new Date().getFullYear();
+      const years = startedDate ? Math.max(1, thisYear - startedDate.getFullYear()) : null;
+      const fmtDate = d => d ? `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` : '';
+
+      const correctFirst = firstHolidayFromDate(dateVal);
+      const correctLast  = correctFirst ? lastHolidayFromFirst(correctFirst) : null;
+      const firstHolSS   = hasCol('first_hol') ? String(cell(r,'first_hol')||'').trim() : '';
+      const ssFirst      = SS_MAP[firstHolSS] || firstHolSS;
+      const mismatch     = (correctFirst && ssFirst && ssFirst !== correctFirst) ? `Should be ${correctFirst}` : '';
+
+      const checkNum = cell(r,'check_num');
+      const amount   = cell(r,'paid');
+      const ps = payStatus(checkNum, amount);
+
+      const amtStr  = String(amount||'').trim();
+      const ckStr   = String(checkNum||'').trim();
+      let payDisplay = ckStr;
+      if(ckStr.toLowerCase().includes('paypal')) payDisplay = 'PayPal' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
+      else if(ckStr.toLowerCase()==='mailed check') payDisplay = 'Check mailed';
+      else if(ckStr.toLowerCase()==='cash') payDisplay = 'Cash' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
+      else if(ckStr.toLowerCase()==='m1214') payDisplay = 'Check M1214' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
+      else if(ckStr.toLowerCase()==='pending') payDisplay = 'Pending';
+      else if(ckStr.toLowerCase().includes('pick up')) payDisplay = 'Pick up';
+      else if(ckStr && !isNaN(ckStr)) payDisplay = `Ck #${ckStr}` + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
+
+      rows.push({
+        scout: scoutClean,
+        route,
+        name:     (String(cell(r,'first')||'').trim()+' '+String(cell(r,'last')||'').trim()).trim(),
+        address:  (String(cell(r,'num')||'').trim()+' '+String(cell(r,'street')||'').trim()).trim(),
+        subdivision: String(cell(r,'sub')||'').trim(),
+        phone:    hasCol('phone') ? String(cell(r,'phone')||'').trim() : '',
+        email:    hasCol('email') ? String(cell(r,'email')||'').trim() : '',
+        rn:       isNew ? 'New' : 'Renewal',
+        date_parsed:       dateVal ? `${dateVal.getFullYear()}-${String(dateVal.getMonth()+1).padStart(2,'0')}-${String(dateVal.getDate()).padStart(2,'0')}` : '',
+        payment_date_display: fmtDate(dateVal),
+        started_display:   fmtDate(startedDate),
+        years,
+        first_hol_ss: firstHolSS,
+        correct_first: correctFirst||'',
+        correct_last:  correctLast||'',
+        mismatch,
+        pay_status: ps,
+        pay_display: payDisplay,
+      });
+    }
+
+    // ── PARSE EXPIRED ROWS ──────────────────────────────────────────────
+    const expiredRows = [];
+    if(hasCol('status') || hasCol('exp_year')){
       const thisYearNum = new Date().getFullYear();
       for(let i = headerRow+1; i < raw.length; i++){
         const r = raw[i];
-        if(!r || r.length < 5) continue;
-        const status2  = String(r[C.status]||'').trim().toUpperCase();
-        const expYear2 = String(r[C.exp_year]||'').trim();
-        // A row is expired if status=EXPIRED, or if it's a #REF! row with exp year 2025 or earlier
+        if(!r || r.length < 3) continue;
+        const status2  = hasCol('status') ? String(cell(r,'status')||'').trim().toUpperCase() : '';
+        const expYear2 = hasCol('exp_year') ? String(cell(r,'exp_year')||'').trim() : '';
         const isExpired = (status2 === 'EXPIRED') ||
                           (status2 === '#REF!' && expYear2 && expYear2 !== '2026' && expYear2 !== '2027' && !isNaN(expYear2));
         if(!isExpired) continue;
-        const fname = String(r[C.first]||'').trim();
-        const lname = String(r[C.last]||'').trim();
+        const fname = String(cell(r,'first')||'').trim();
+        const lname = String(cell(r,'last')||'').trim();
         const name  = (fname+' '+lname).trim();
         if(!name) continue;
-        const addr    = (String(r[C.num]||'').trim()+' '+String(r[C.street]||'').trim()).trim();
-        const sub     = String(r[C.sub]||'').trim();
-        const route   = String(r[C.route]||'').trim();
-        const expYear = String(r[C.exp_year]||'').trim();
-        const scout   = String(r[C.scout]||'').trim();
-        const scout2   = String(r[C.scout]||'').trim();
+        const addr    = (String(cell(r,'num')||'').trim()+' '+String(cell(r,'street')||'').trim()).trim();
+        const sub     = String(cell(r,'sub')||'').trim();
+        const route   = String(cell(r,'route')||'').trim();
+        const scout2  = String(cell(r,'scout')||'').trim();
         const scoutExp = resolveScout(scout2, route);
-        const startedDate2 = parseExcelDate(r[C.started]);
+        const startedDate2 = parseExcelDate(cell(r,'started'));
         const fmtDate2 = d => d ? `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` : '';
         const years2  = startedDate2 ? Math.max(1, thisYearNum - startedDate2.getFullYear()) : null;
         expiredRows.push({
@@ -699,28 +898,28 @@ function processFile(){
           years: years2,
         });
       }
-      EXPIRED_DATA = expiredRows;
-      buildExpiredDropdowns();
-      document.getElementById('expired-count').textContent = `(${expiredRows.length})`;
-      // ─────────────────────────────────────────────────────────────────────
-
-      if(!rows.length){ showError('No active 2026 subscriptions found. Check that this is the correct file.'); btn.textContent='⚙️ Process Spreadsheet'; btn.disabled=false; return; }
-
-      ALL_DATA = rows;
-      buildScoutDropdown();
-      document.getElementById('next-hol').textContent = nextHoliday();
-      document.getElementById('hdr-sub').textContent = `ALL ROUTES · ${rows.length} ACTIVE SUBSCRIPTIONS`;
-      document.getElementById('upload-screen').style.display = 'none';
-      document.getElementById('dashboard-screen').style.display = 'block';
-      go();
-
-    } catch(err){
-      showError('Error reading file: ' + err.message);
-      btn.textContent='⚙️ Process Spreadsheet';
-      btn.disabled=false;
     }
-  };
-  reader.readAsArrayBuffer(selectedFile);
+    EXPIRED_DATA = expiredRows;
+    buildExpiredDropdowns();
+    document.getElementById('expired-count').textContent = `(${expiredRows.length})`;
+
+    if(!rows.length){
+      showError('No active subscriptions found. Check your column mapping and try again.');
+      document.getElementById('mapping-screen').style.display = 'block';
+      return;
+    }
+
+    ALL_DATA = rows;
+    buildScoutDropdown();
+    document.getElementById('next-hol').textContent = nextHoliday();
+    document.getElementById('hdr-sub').textContent = `ALL ROUTES · ${rows.length} ACTIVE SUBSCRIPTIONS`;
+    document.getElementById('dashboard-screen').style.display = 'block';
+    go();
+
+  } catch(err){
+    showError('Error processing data: ' + err.message);
+    document.getElementById('mapping-screen').style.display = 'block';
+  }
 }
 
 function showError(msg){
