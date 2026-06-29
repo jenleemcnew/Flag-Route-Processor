@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🇺🇸 Flag Route Processor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --navy:#1A2540; --border:#E0E3EA; --muted:#6B7280; --bg:#F0F2F5;
+  --green:#2E7D4F; --orange:#D95B1F; --amber:#C8871A;
+  --purple:#5B21B6; --red:#B91C1C;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;}
+
+/* ── UPLOAD SCREEN ── */
+#upload-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 20px;}
+.logo{font-size:56px;margin-bottom:16px;}
+h1{font-size:24px;font-weight:600;margin-bottom:6px;text-align:center;}
+.tagline{font-size:14px;color:var(--muted);margin-bottom:40px;text-align:center;}
+
+.upload-box{
+  background:white;border:2px dashed var(--border);border-radius:16px;
+  padding:40px;text-align:center;cursor:pointer;transition:all .2s;
+  width:100%;max-width:440px;
+}
+.upload-box:hover,.upload-box.drag{border-color:#6366F1;background:#F5F3FF;}
+.upload-box .uico{font-size:36px;margin-bottom:12px;}
+.upload-box h2{font-size:16px;font-weight:600;margin-bottom:6px;}
+.upload-box p{font-size:13px;color:var(--muted);}
+#file-input{display:none;}
+
+.or{margin:16px 0;font-size:13px;color:var(--muted);}
+
+.process-btn{
+  background:var(--navy);color:white;border:none;border-radius:10px;
+  padding:14px 32px;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;
+  cursor:pointer;width:100%;max-width:440px;transition:background .2s;
+  display:none;
+}
+.process-btn:hover{background:#2D3F6B;}
+.process-btn:disabled{background:#9CA3AF;cursor:not-allowed;}
+
+.file-selected{
+  background:#E8F5EC;border:2px solid var(--green);border-radius:10px;
+  padding:12px 16px;display:none;align-items:center;gap:10px;
+  width:100%;max-width:440px;font-size:13px;
+}
+.file-selected .fname{font-weight:600;color:var(--green);}
+
+.error-msg{color:var(--red);font-size:13px;margin-top:12px;display:none;}
+
+.how-it-works{margin-top:40px;max-width:440px;width:100%;}
+.how-it-works h3{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;}
+.step{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--navy);color:white;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.step p{font-size:13px;color:#374151;line-height:1.5;}
+.step p strong{color:var(--navy);}
+
+/* ── DASHBOARD SCREEN ── */
+#dashboard-screen{display:none;}
+
+.header{background:var(--navy);color:white;padding:20px 28px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.header h1{font-size:18px;font-weight:600;margin-bottom:2px;}
+.header .sub{font-size:11px;color:#A0AAC0;font-family:'DM Mono',monospace;letter-spacing:.5px;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.back-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.back-btn:hover{background:rgba(255,255,255,.2);}
+
+.stats{background:white;border-bottom:1px solid var(--border);padding:10px 28px;display:flex;gap:22px;flex-wrap:wrap;align-items:center;}
+.stat{display:flex;flex-direction:column;}
+.sv{font-size:20px;font-weight:600;font-family:'DM Mono',monospace;line-height:1;margin-bottom:1px;}
+.sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;}
+.sdiv{width:1px;background:var(--border);align-self:stretch;}
+
+.filters{background:white;border-bottom:1px solid var(--border);padding:10px 28px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.fl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-right:2px;}
+select,input[type=text]{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;outline:none;}
+select:focus,input:focus{border-color:#6366F1;}
+.fg{display:flex;align-items:center;gap:5px;}
+.clr{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.clr:hover{background:var(--bg);}
+
+.legend{display:flex;gap:12px;padding:8px 28px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:white;}
+.leg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.dot.paid{background:var(--green);}
+.dot.watch{background:var(--orange);}
+.dot.mailed{background:var(--purple);}
+.dot.pickup{background:var(--amber);}
+.dot.mm{background:var(--red);border-radius:50%;}
+
+.twrap{margin:16px 28px 0;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{text-align:left;padding:7px 10px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:2px solid var(--border);white-space:nowrap;background:white;position:sticky;top:0;z-index:2;}
+thead th.s{cursor:pointer;}thead th.s:hover{color:var(--navy);}
+tbody tr{background:white;border-bottom:1px solid var(--border);}
+tbody tr:hover{background:#F8F9FB;}
+tbody td{padding:8px 10px;vertical-align:middle;}
+tbody tr.rpd td:first-child{border-left:3px solid var(--green);}
+tbody tr.rw td:first-child{border-left:3px solid var(--orange);}
+tbody tr.rm td:first-child{border-left:3px solid var(--purple);}
+tbody tr.rp td:first-child{border-left:3px solid var(--amber);}
+
+.badge{display:inline-block;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:20px;white-space:nowrap;}
+.badge.paid{background:var(--green);color:white;}
+.badge.watch{background:var(--orange);color:white;}
+.badge.mailed{background:var(--purple);color:white;}
+.badge.pickup{background:var(--amber);color:white;}
+.badge.new{background:#EDE9FE;color:var(--purple);border:1px solid #C4B5FD;}
+.badge.renewal{background:#E0F2FE;color:#0369A1;border:1px solid #BAE6FD;}
+.mmpill{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--red);background:#FEF2F2;border:1px solid #FECACA;border-radius:4px;padding:2px 6px;margin-top:2px;}
+.contact a{color:#4F46E5;text-decoration:none;font-size:12px;}
+.contact a:hover{text-decoration:underline;}
+.contact span{display:block;font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;}
+.empty{padding:40px;text-align:center;color:var(--muted);font-size:14px;}
+.sumbar{margin:0 28px;padding:8px 14px;background:white;border:1px solid var(--border);border-top:none;font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-bottom:40px;}
+
+/* Tabs */
+.tabs{background:white;border-bottom:2px solid var(--border);padding:0 28px;display:flex;gap:0;}
+.tab{padding:12px 20px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:color .15s;}
+.tab:hover{color:var(--navy);}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.route-bar{margin:0 28px;padding:10px 14px;background:#EEF2FF;border:1px solid #C7D2FE;border-bottom:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.route-btn{display:inline-flex;align-items:center;gap:6px;background:#4F46E5;color:white;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;text-decoration:none;white-space:nowrap;}
+.route-btn:hover{background:#4338CA;}
+.route-note{font-size:12px;color:#3730A3;}
+
+/* Route legend */
+.rleg-bar{background:white;border-bottom:1px solid var(--border);padding:0 28px;}
+.rleg-toggle{display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;font-size:12.5px;color:var(--muted);user-select:none;border:none;background:none;font-family:'DM Sans',sans-serif;width:100%;}
+.rleg-toggle:hover{color:var(--navy);}
+.rleg-toggle .arrow{font-size:10px;transition:transform .2s;}
+.rleg-toggle.open .arrow{transform:rotate(90deg);}
+.rleg-grid{display:none;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 20px;padding-bottom:12px;}
+.rleg-grid.visible{display:grid;}
+.rleg-item{display:flex;align-items:baseline;gap:6px;font-size:12px;padding:3px 0;}
+.rleg-code{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--navy);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 6px;white-space:nowrap;flex-shrink:0;}
+.rleg-name{color:#374151;}
+
+/* Flag posting checkboxes */
+.flag-col{width:52px;text-align:center;}
+.flag-cb-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.flag-cb{
+  width:22px;height:22px;border-radius:5px;border:2px solid var(--border);
+  background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:13px;transition:all .15s;flex-shrink:0;
+}
+.flag-cb:hover{border-color:var(--green);background:#F0FDF4;}
+.flag-cb.checked{background:var(--green);border-color:var(--green);}
+.flag-cb-label{font-size:9px;color:var(--muted);text-align:center;line-height:1.2;}
+tbody tr.done-row{opacity:.5;}
+tbody tr.done-row td:first-child{border-left-color:#9CA3AF !important;}
+.progress-wrap{margin:0 28px;background:white;border:1px solid var(--border);border-bottom:none;padding:10px 14px;display:none;}
+.progress-wrap.visible{display:block;}
+.progress-label{font-size:11px;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between;}
+.progress-track{background:#F3F4F6;border-radius:20px;height:8px;overflow:hidden;}
+.progress-fill{background:var(--green);height:100%;border-radius:20px;transition:width .3s;}
+.resume-note{font-size:11px;color:var(--green);font-weight:600;margin-top:5px;}
+
+@media(max-width:700px){
+  .header,.stats,.filters,.legend,.twrap,.sumbar{padding-left:12px;padding-right:12px;}
+  .header{flex-direction:column;align-items:flex-start;}
+  .hdr-right{margin-left:0;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ UPLOAD SCREEN ══════════════════ -->
+<div id="upload-screen">
+  <div class="logo">🇺🇸</div>
+  <h1>Flag Route Processor</h1>
+  <p class="tagline">Upload the master spreadsheet → get the full troop dashboard instantly</p>
+
+  <div class="upload-box" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="uico">📂</div>
+    <h2>Drop your file here</h2>
+    <p>or click to browse</p>
+    <input type="file" id="file-input" accept=".xlsx,.xlsm,.xls,.csv">
+  </div>
+
+  <div class="file-selected" id="file-selected">
+    <span>✅</span>
+    <span class="fname" id="fname-display"></span>
+  </div>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <button class="process-btn" id="process-btn" onclick="processFile()">
+    ⚙️ Process Spreadsheet
+  </button>
+
+  <div class="how-it-works">
+    <h3>How it works</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <p>When you receive the updated master spreadsheet from the troop coordinator, <strong>save it anywhere on your device.</strong></p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <p>Come back here, <strong>drop or select the file</strong> — works with .xlsm, .xlsx, or .csv exports.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <p>Hit <strong>Process</strong> and get the full troop dashboard — filterable by scout, payment status, and holiday adjustments. The file never leaves your device.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <p>Filter to <strong>your scout's name</strong> to see just their route, or use <strong>"Holiday adjustments only"</strong> to pull the adjustment list for the coordinator.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ DASHBOARD SCREEN ══════════════════ -->
+<div id="dashboard-screen">
+  <div class="header">
+    <div style="font-size:30px;line-height:1">🇺🇸</div>
+    <div>
+      <h1>Flag Route Dashboard — 2026 Season</h1>
+      <div class="sub" id="hdr-sub">ALL ROUTES</div>
+    </div>
+    <div class="hdr-right">
+      <div style="text-align:right;margin-right:8px;">
+        <div style="font-size:10px;color:#A0AAC0;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Next Holiday</div>
+        <div style="font-size:13px;font-weight:600;color:#F5C842;" id="next-hol">—</div>
+      </div>
+      <button class="back-btn" onclick="goBack()">← New File</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="sv" id="s-tot" style="color:var(--navy)">—</span><span class="sl">Showing</span></div>
+    <div class="sdiv"></div>
+    <div class="stat"><span class="sv" id="s-paid" style="color:var(--green)">—</span><span class="sl">Paid ✓</span></div>
+    <div class="sdiv"></div>
+    <div class="stat"><span class="sv" id="s-watch" style="color:var(--orange)">—</span><span class="sl">Follow up</span></div>
+    <div class="sdiv"></div>
+    <div class="stat"><span class="sv" id="s-mm" style="color:var(--red)">—</span><span class="sl">Holiday adjustment</span></div>
+    <div class="sdiv"></div>
+    <div class="stat"><span class="sv" id="s-new" style="color:var(--purple)">—</span><span class="sl">New subs</span></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-active" onclick="switchTab('active')">✅ Active Subscriptions</div>
+    <div class="tab" id="tab-expired" onclick="switchTab('expired')">📋 Non-Renewed <span id="expired-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)"></span></div>
+  </div>
+
+  <!-- ── ACTIVE TAB ── -->
+  <div class="tab-panel active" id="panel-active">
+
+  <div class="filters">
+    <div class="fg"><span class="fl">Scout</span>
+      <select id="f-scout" onchange="go()"><option value="">All Scouts</option></select>
+    </div>
+    <div class="fg"><span class="fl">Status</span>
+      <select id="f-status" onchange="go()">
+        <option value="">All</option>
+        <option value="paid">Paid</option>
+        <option value="watch">Follow Up</option>
+        <option value="mailed">Mailed</option>
+        <option value="pickup">Pick Up</option>
+      </select>
+    </div>
+    <div class="fg"><span class="fl">Type</span>
+      <select id="f-rn" onchange="go()">
+        <option value="">All</option>
+        <option value="New">New</option>
+        <option value="Renewal">Renewal</option>
+      </select>
+    </div>
+    <div class="fg"><span class="fl">Holiday ⚠</span>
+      <select id="f-mm" onchange="go()">
+        <option value="">All</option>
+        <option value="yes">Mismatches only</option>
+      </select>
+    </div>
+    <div class="fg">
+      <input type="text" id="f-q" placeholder="Search name / address…" oninput="go()" style="width:180px;">
+    </div>
+    <button class="clr" onclick="clrFilters()">✕ Clear</button>
+  </div>
+
+  <div class="legend">
+    <div class="leg"><div class="dot paid"></div>Paid</div>
+    <div class="leg"><div class="dot watch"></div>Follow up needed</div>
+    <div class="leg"><div class="dot mailed"></div>Mailed — not received</div>
+    <div class="leg"><div class="dot pickup"></div>Pick up cash/check</div>
+    <div class="leg"><div class="dot mm"></div>Holiday start/end needs adjustment</div>
+  </div>
+
+  <!-- Route code legend -->
+  <div class="rleg-bar">
+    <button class="rleg-toggle" id="rleg-btn" onclick="toggleRLeg()">
+      <span class="arrow">▶</span> Route code key &nbsp;<span style="color:#9CA3AF;font-size:11px">— click to expand</span>
+    </button>
+    <div class="rleg-grid" id="rleg-grid">
+      <div class="rleg-item"><span class="rleg-code">A</span><span class="rleg-name">Eagle Lakes 1</span></div>
+      <div class="rleg-item"><span class="rleg-code">AC</span><span class="rleg-name">Autumn Creek</span></div>
+      <div class="rleg-item"><span class="rleg-code">CC</span><span class="rleg-name">Cowards Creek</span></div>
+      <div class="rleg-item"><span class="rleg-code">CH</span><span class="rleg-name">Chappel Hill</span></div>
+      <div class="rleg-item"><span class="rleg-code">CL</span><span class="rleg-name">Claremont</span></div>
+      <div class="rleg-item"><span class="rleg-code">D</span><span class="rleg-name">Eagle Lake 4</span></div>
+      <div class="rleg-item"><span class="rleg-code">DE</span><span class="rleg-name">Dunbar Estates</span></div>
+      <div class="rleg-item"><span class="rleg-code">FL</span><span class="rleg-name">Falling Leaf Estates</span></div>
+      <div class="rleg-item"><span class="rleg-code">FR1</span><span class="rleg-name">Falcon Ridge 1</span></div>
+      <div class="rleg-item"><span class="rleg-code">FR2</span><span class="rleg-name">Falcon Ridge 2</span></div>
+      <div class="rleg-item"><span class="rleg-code">FR3</span><span class="rleg-name">Falcon Ridge 3</span></div>
+      <div class="rleg-item"><span class="rleg-code">G</span><span class="rleg-name">Forest (G)</span></div>
+      <div class="rleg-item"><span class="rleg-code">H</span><span class="rleg-name">Forest (H)</span></div>
+      <div class="rleg-item"><span class="rleg-code">I</span><span class="rleg-name">Forest (I)</span></div>
+      <div class="rleg-item"><span class="rleg-code">IG</span><span class="rleg-name">Imperial Gardens</span></div>
+      <div class="rleg-item"><span class="rleg-code">J</span><span class="rleg-name">Forest (J)</span></div>
+      <div class="rleg-item"><span class="rleg-code">K</span><span class="rleg-name">Northfield Est (K)</span></div>
+      <div class="rleg-item"><span class="rleg-code">KM</span><span class="rleg-name">Keystone Meadows (KM)</span></div>
+      <div class="rleg-item"><span class="rleg-code">L</span><span class="rleg-name">Laurelfield (L)</span></div>
+      <div class="rleg-item"><span class="rleg-code">LFR</span><span class="rleg-name">Lakes of Falcon Ridge</span></div>
+      <div class="rleg-item"><span class="rleg-code">M</span><span class="rleg-name">FWD Lakes (M)</span></div>
+      <div class="rleg-item"><span class="rleg-code">P</span><span class="rleg-name">P Hazeldal Estat</span></div>
+      <div class="rleg-item"><span class="rleg-code">PR</span><span class="rleg-name">Polly Ranch (PR)</span></div>
+      <div class="rleg-item"><span class="rleg-code">SC1</span><span class="rleg-name">Sterling Creek 1</span></div>
+      <div class="rleg-item"><span class="rleg-code">SC2</span><span class="rleg-name">Sterling Creek 2</span></div>
+      <div class="rleg-item"><span class="rleg-code">SE</span><span class="rleg-name">Sunwood Estates</span></div>
+      <div class="rleg-item"><span class="rleg-code">SE2</span><span class="rleg-name">Sunwood Estates 2</span></div>
+      <div class="rleg-item"><span class="rleg-code">SW</span><span class="rleg-name">Sterlingwood</span></div>
+      <div class="rleg-item"><span class="rleg-code">TP</span><span class="rleg-name">The Park</span></div>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-label">
+      <span>Flags posted this holiday</span>
+      <span id="progress-text">0 / 0</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="resume-note" id="resume-note"></div>
+  </div>
+  <div class="route-bar" id="route-bar" style="display:none;">
+    <div style="display:flex;flex-direction:column;gap:8px;width:100%;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <a id="route-link" class="route-btn" href="#" target="_blank">🗺 Open Route in Google Maps</a>
+        <button id="mark-batch-btn" class="route-btn" style="background:#2E7D4F;border:none;cursor:pointer;" onclick="markBatchPosted()">✓ Mark This Batch as Posted</button>
+      </div>
+      <span class="route-note" id="route-note"></span>
+    </div>
+  </div>
+
+  <div class="twrap">
+    <table>
+      <thead><tr>
+        <th class="flag-col" id="th-flag" style="display:none;">🚩</th>
+        <th>Name</th>
+        <th>Address</th>
+        <th class="s" onclick="srt('scout')">Scout ↕</th>
+        <th>Rt</th>
+        <th>Contact</th>
+        <th class="s" onclick="srt('pay_status')">Payment ↕</th>
+        <th>Type</th>
+        <th>First Holiday</th>
+        <th>Last Holiday</th>
+        <th class="s" onclick="srt('date_parsed')">Current Payment Date ↕</th>
+        <th class="s" onclick="srt('started_display')">Original Sub Date ↕</th>
+        <th class="s" onclick="srt('years')">Years ↕</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none">No results match your filters.</div>
+  </div>
+  <div class="sumbar" id="sumbar"></div>
+  </div><!-- end panel-active -->
+
+  <!-- ── NON-RENEWED TAB ── -->
+  <div class="tab-panel" id="panel-expired">
+    <div class="filters">
+      <div class="fg"><span class="fl">Neighborhood</span>
+        <select id="ex-sub" onchange="goExpired()"><option value="">All Neighborhoods</option></select>
+      </div>
+      <div class="fg"><span class="fl">Route</span>
+        <select id="ex-route" onchange="goExpired()"><option value="">All Routes</option></select>
+      </div>
+      <div class="fg"><span class="fl">Year Expired</span>
+        <select id="ex-year" onchange="goExpired()">
+          <option value="">All Years</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+        </select>
+      </div>
+      <div class="fg">
+        <input type="text" id="ex-q" placeholder="Search name / address…" oninput="goExpired()" style="width:180px;">
+      </div>
+      <button class="clr" onclick="clrExpired()">✕ Clear</button>
+    </div>
+
+    <div style="margin:12px 28px;padding:10px 14px;background:#FFF8E6;border:1px solid #F5C842;border-radius:6px;font-size:13px;color:#78350F;line-height:1.55;">
+      💡 <strong>Win-back targets.</strong> These addresses had active subscriptions in 2024 or 2025 but did not renew for 2026. Consider reaching out — they already know the program.
+    </div>
+
+    <div class="twrap">
+      <table>
+        <thead><tr>
+          <th>Name</th>
+          <th>Address</th>
+          <th>Neighborhood</th>
+          <th class="s" onclick="srtEx('route')">Rt ↕</th>
+          <th>Scout</th>
+          <th class="s" onclick="srtEx('exp_year')">Last Year ↕</th>
+          <th class="s" onclick="srtEx('started')">Original Sub Date ↕</th>
+          <th>Years Participated</th>
+        </tr></thead>
+        <tbody id="ex-tbody"></tbody>
+      </table>
+      <div class="empty" id="ex-empty" style="display:none">No results match your filters.</div>
+    </div>
+    <div class="sumbar" id="ex-sumbar"></div>
+  </div><!-- end panel-expired -->
+
+</div><!-- end dashboard-screen -->
+
+<!-- SheetJS for reading xlsx/xlsm -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ── HOLIDAYS ─────────────────────────────────────────────────────────────────
+const HOLIDAYS_2026 = [
+  {name:'Memorial Day',  date:new Date(2026,4,25)},
+  {name:'Flag Day',      date:new Date(2026,5,14)},
+  {name:'July 4th',      date:new Date(2026,6,4)},
+  {name:'Labor Day',     date:new Date(2026,8,7)},
+  {name:'Veterans Day',  date:new Date(2026,10,11)},
+];
+const HOL_NAMES = HOLIDAYS_2026.map(h=>h.name);
+
+function nextHoliday(){
+  const today = new Date();
+  for(const h of HOLIDAYS_2026){ if(h.date >= today) return h.name; }
+  return 'Veterans Day';
+}
+
+function firstHolidayFromDate(d){
+  if(!d) return null;
+  for(const h of HOLIDAYS_2026){ if(d < h.date) return h.name; }
+  return null;
+}
+
+function lastHolidayFromFirst(first){
+  const idx = HOL_NAMES.indexOf(first);
+  if(idx < 0) return 'Veterans Day';
+  const lastIdx = idx + 4;
+  if(lastIdx < HOL_NAMES.length) return HOL_NAMES[lastIdx];
+  const overflow = lastIdx - (HOL_NAMES.length - 1);
+  return HOL_NAMES[overflow - 1] + " '27";
+}
+
+// ── EXCEL DATE PARSING ────────────────────────────────────────────────────────
+function parseExcelDate(val){
+  if(val === null || val === undefined || val === '') return null;
+  const s = String(val).trim();
+  const SKIP = ['pending','pick up','pick up cash/check','mailed check','girl troop paypal',
+    'troop paypal','m1214','cash','nelson check','nan','pick up check',''];
+  if(SKIP.includes(s.toLowerCase())) return null;
+
+  // Excel serial number
+  const n = parseFloat(s);
+  if(!isNaN(n) && n > 40000){
+    const epoch = new Date(Date.UTC(1899,11,30) + n * 86400000);
+    return new Date(epoch.getUTCFullYear(), epoch.getUTCMonth(), epoch.getUTCDate());
+  }
+  // m/d/yyyy or m/d/yy
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(m){
+    let yr = parseInt(m[3]); if(yr<100) yr+=2000;
+    return new Date(yr, parseInt(m[1])-1, parseInt(m[2]));
+  }
+  // m.d.yy
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+  if(m){
+    let yr = parseInt(m[3]); if(yr<100) yr+=2000;
+    return new Date(yr, parseInt(m[1])-1, parseInt(m[2]));
+  }
+  return null;
+}
+
+// ── PAYMENT STATUS ────────────────────────────────────────────────────────────
+const SS_MAP = {
+  'Mem. Day':'Memorial Day','Mem Day':'Memorial Day',
+  'Flag Day':'Flag Day','July 4th':'July 4th',
+  'Labor Day':'Labor Day','Vet. Day':'Veterans Day',
+};
+
+function payStatus(checkNum, amount){
+  const cn = String(checkNum||'').trim().toLowerCase();
+  const amt = String(amount||'').trim();
+  if(cn === 'mailed check') return 'mailed';
+  if(cn === 'pick up' || cn === 'pick up cash/check') return 'pickup';
+  if(['troop paypal','girl troop paypal','m1214','cash'].includes(cn)) return 'paid';
+  if(amt && amt !== '0') return 'paid';
+  if(cn === 'pending' || cn === '') return 'watch';
+  // has a check number
+  if(cn && !isNaN(cn)) return 'paid';
+  return 'watch';
+}
+
+// ── FILE HANDLING ─────────────────────────────────────────────────────────────
+let selectedFile = null;
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e=>{e.preventDefault();dropZone.classList.add('drag');});
+dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e=>{
+  e.preventDefault(); dropZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if(f) setFile(f);
+});
+document.getElementById('file-input').addEventListener('change', e=>{
+  if(e.target.files[0]) setFile(e.target.files[0]);
+});
+
+function setFile(f){
+  selectedFile = f;
+  document.getElementById('fname-display').textContent = f.name;
+  document.getElementById('file-selected').style.display = 'flex';
+  document.getElementById('process-btn').style.display = 'block';
+  document.getElementById('error-msg').style.display = 'none';
+}
+
+function goBack(){
+  document.getElementById('dashboard-screen').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'flex';
+}
+
+// ── MAIN PROCESSING ───────────────────────────────────────────────────────────
+let ALL_DATA = [];
+let sortKey = null, sortDir = 1, filtered = [];
+
+function processFile(){
+  const btn = document.getElementById('process-btn');
+  btn.textContent = '⏳ Processing…';
+  btn.disabled = true;
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const sheetName = wb.SheetNames.find(n=>n.toLowerCase().includes('sub')) || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+      // Find header row (look for "Scout" column)
+      let headerRow = -1;
+      for(let i=0;i<Math.min(10,raw.length);i++){
+        if(raw[i].some(c=>String(c).trim().toLowerCase()==='scout')){
+          headerRow = i; break;
+        }
+      }
+      if(headerRow < 0){ showError('Could not find header row. Make sure this is the subscriptions sheet.'); btn.textContent='⚙️ Process Spreadsheet'; btn.disabled=false; return; }
+
+      const headers = raw[headerRow].map(h=>String(h).trim().toLowerCase());
+      const col = name => headers.indexOf(name);
+
+      // Column indices
+      const C = {
+        first_hol: col('first holiday'),
+        last_hol:  col('last holiday'),
+        exp_year:  col('expiration year'),
+        status:    col('status'),
+        started:   col('started'),
+        check_num: col('check #'),
+        paid:      col('paid'),
+        rn:        headers.findIndex(h=>h.includes('(r)en') || h.includes('ren') || h==='r/n' || h==='(r)en\n(n)ew'),
+        renewed:   col('renewed'),
+        flags:     col('# of flags'),
+        num:       col('no.'),
+        street:    col('street'),
+        sub:       col('sub'),
+        first:     col('first'),
+        last:      col('last'),
+        route:     col('route'),
+        scout:     col('scout'),
+        phone:     col('phone'),
+        email:     col('email'),
+        notes:     col('notes'),
+      };
+
+      // Fallback for rn column
+      if(C.rn < 0) C.rn = headers.findIndex(h=>h.includes('(r)') || h.includes('ren'));
+
+      const rows = [];
+      for(let i = headerRow+1; i < raw.length; i++){
+        const r = raw[i];
+        if(!r || r.length < 5) continue;
+        const status = String(r[C.status]||'').trim().toUpperCase();
+        // Status column contains Excel formulas that show #REF! in Google Sheets/SheetJS.
+        // Fall back to expiration year: 2026+ = active, 2025 or earlier = expired.
+        const expYear = String(r[C.exp_year]||'').trim();
+        const isActive = (status === 'GOOD') ||
+                         (status === '#REF!' && (expYear === '2026' || expYear === '2027')) ||
+                         (status === '' && (expYear === '2026' || expYear === '2027'));
+        if(!isActive) continue;
+        const scoutRaw = String(r[C.scout]||'').trim();
+        const route    = String(r[C.route]||'').trim();
+        const scoutClean = resolveScout(scoutRaw, route);
+        if(!scoutClean) continue;
+
+        const rnRaw = String(r[C.rn]||'').trim().toUpperCase();
+        const isNew = rnRaw === 'N';
+        const startedRaw = r[C.started];
+        const renewedRaw = r[C.renewed];
+
+        // Payment date = renewed date for renewals, started date for new subs
+        // Fall back to whichever column has a date if the primary one is empty
+        let dateVal = parseExcelDate(isNew ? startedRaw : renewedRaw);
+        if(!dateVal) dateVal = parseExcelDate(isNew ? renewedRaw : startedRaw);
+
+        // Original subscription date from started column, fall back to renewed
+        const startedDate = parseExcelDate(startedRaw) || parseExcelDate(renewedRaw);
+
+        // Years of participation = current year minus started year (min 1)
+        const thisYear = new Date().getFullYear();
+        const years = startedDate ? Math.max(1, thisYear - startedDate.getFullYear()) : null;
+
+        // Format dates for display
+        const fmtDate = d => d ? `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` : '';
+
+        const correctFirst = firstHolidayFromDate(dateVal);
+        const correctLast  = correctFirst ? lastHolidayFromFirst(correctFirst) : null;
+        const firstHolSS   = String(r[C.first_hol]||'').trim();
+        const ssFirst      = SS_MAP[firstHolSS] || firstHolSS;
+        const mismatch     = (correctFirst && ssFirst !== correctFirst) ? `Should be ${correctFirst}` : '';
+
+        const checkNum = r[C.check_num];
+        const amount   = r[C.paid];
+        const ps = payStatus(checkNum, amount);
+
+        const amtStr  = String(amount||'').trim();
+        const ckStr   = String(checkNum||'').trim();
+        let payDisplay = ckStr;
+        if(ckStr.toLowerCase().includes('paypal')) payDisplay = 'PayPal' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
+        else if(ckStr.toLowerCase()==='mailed check') payDisplay = 'Check mailed';
+        else if(ckStr.toLowerCase()==='cash') payDisplay = 'Cash' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
+        else if(ckStr.toLowerCase()==='m1214') payDisplay = 'Check M1214' + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
+        else if(ckStr.toLowerCase()==='pending') payDisplay = 'Pending';
+        else if(ckStr.toLowerCase().includes('pick up')) payDisplay = 'Pick up';
+        else if(ckStr && !isNaN(ckStr)) payDisplay = `Ck #${ckStr}` + (amtStr&&amtStr!=='0'?` · $${amtStr}`:'');
+
+        rows.push({
+          scout: scoutClean,
+          route:    String(r[C.route]||'').trim(),
+          name:     (String(r[C.first]||'').trim()+' '+String(r[C.last]||'').trim()).trim(),
+          address:  (String(r[C.num]||'').trim()+' '+String(r[C.street]||'').trim()).trim(),
+          subdivision: String(r[C.sub]||'').trim(),
+          phone:    String(r[C.phone]||'').trim(),
+          email:    String(r[C.email]||'').trim(),
+          rn:       isNew ? 'New' : 'Renewal',
+          date_parsed:       dateVal ? `${dateVal.getFullYear()}-${String(dateVal.getMonth()+1).padStart(2,'0')}-${String(dateVal.getDate()).padStart(2,'0')}` : '',
+          payment_date_display: fmtDate(dateVal),
+          started_display:   fmtDate(startedDate),
+          years:             years,
+          first_hol_ss: firstHolSS,
+          correct_first: correctFirst||'',
+          correct_last:  correctLast||'',
+          mismatch,
+          pay_status: ps,
+          pay_display: payDisplay,
+        });
+      }
+
+      // ── PARSE EXPIRED ROWS ──────────────────────────────────────────────
+      const expiredRows = [];
+      const thisYearNum = new Date().getFullYear();
+      for(let i = headerRow+1; i < raw.length; i++){
+        const r = raw[i];
+        if(!r || r.length < 5) continue;
+        const status2  = String(r[C.status]||'').trim().toUpperCase();
+        const expYear2 = String(r[C.exp_year]||'').trim();
+        // A row is expired if status=EXPIRED, or if it's a #REF! row with exp year 2025 or earlier
+        const isExpired = (status2 === 'EXPIRED') ||
+                          (status2 === '#REF!' && expYear2 && expYear2 !== '2026' && expYear2 !== '2027' && !isNaN(expYear2));
+        if(!isExpired) continue;
+        const fname = String(r[C.first]||'').trim();
+        const lname = String(r[C.last]||'').trim();
+        const name  = (fname+' '+lname).trim();
+        if(!name) continue;
+        const addr    = (String(r[C.num]||'').trim()+' '+String(r[C.street]||'').trim()).trim();
+        const sub     = String(r[C.sub]||'').trim();
+        const route   = String(r[C.route]||'').trim();
+        const expYear = String(r[C.exp_year]||'').trim();
+        const scout   = String(r[C.scout]||'').trim();
+        const scout2   = String(r[C.scout]||'').trim();
+        const scoutExp = resolveScout(scout2, route);
+        const startedDate2 = parseExcelDate(r[C.started]);
+        const fmtDate2 = d => d ? `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` : '';
+        const years2  = startedDate2 ? Math.max(1, thisYearNum - startedDate2.getFullYear()) : null;
+        expiredRows.push({
+          name, address: addr, subdivision: sub, route, exp_year: expYear2,
+          scout: scoutExp, started: fmtDate2(startedDate2),
+          years: years2,
+        });
+      }
+      EXPIRED_DATA = expiredRows;
+      buildExpiredDropdowns();
+      document.getElementById('expired-count').textContent = `(${expiredRows.length})`;
+      // ─────────────────────────────────────────────────────────────────────
+
+      if(!rows.length){ showError('No active 2026 subscriptions found. Check that this is the correct file.'); btn.textContent='⚙️ Process Spreadsheet'; btn.disabled=false; return; }
+
+      ALL_DATA = rows;
+      buildScoutDropdown();
+      document.getElementById('next-hol').textContent = nextHoliday();
+      document.getElementById('hdr-sub').textContent = `ALL ROUTES · ${rows.length} ACTIVE SUBSCRIPTIONS`;
+      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('dashboard-screen').style.display = 'block';
+      go();
+
+    } catch(err){
+      showError('Error reading file: ' + err.message);
+      btn.textContent='⚙️ Process Spreadsheet';
+      btn.disabled=false;
+    }
+  };
+  reader.readAsArrayBuffer(selectedFile);
+}
+
+function showError(msg){
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function buildScoutDropdown(){
+  const scouts = [...new Set(ALL_DATA.map(r=>r.scout))].sort();
+  const sel = document.getElementById('f-scout');
+  sel.innerHTML = '<option value="">All Scouts</option>';
+  scouts.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o); });
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
+let EXPIRED_DATA = [];
+let exSortKey = null, exSortDir = 1, exFiltered = [];
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+  if(tab === 'expired') goExpired();
+}
+
+function buildExpiredDropdowns(){
+  const subs   = [...new Set(EXPIRED_DATA.map(r=>r.subdivision).filter(Boolean))].sort();
+  const routes = [...new Set(EXPIRED_DATA.map(r=>r.route).filter(Boolean))].sort();
+  const subSel = document.getElementById('ex-sub');
+  subSel.innerHTML = '<option value="">All Neighborhoods</option>';
+  subs.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; subSel.appendChild(o); });
+  const rtSel = document.getElementById('ex-route');
+  rtSel.innerHTML = '<option value="">All Routes</option>';
+  routes.forEach(r=>{ const o=document.createElement('option'); o.value=r; o.textContent=r; rtSel.appendChild(o); });
+}
+
+function goExpired(){
+  const sub   = document.getElementById('ex-sub').value;
+  const route = document.getElementById('ex-route').value;
+  const year  = document.getElementById('ex-year').value;
+  const q     = document.getElementById('ex-q').value.toLowerCase();
+
+  exFiltered = EXPIRED_DATA.filter(r=>{
+    if(sub   && r.subdivision !== sub)   return false;
+    if(route && r.route !== route)        return false;
+    if(year  && r.exp_year !== year)      return false;
+    if(q && !r.name.toLowerCase().includes(q) && !r.address.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if(exSortKey) exFiltered.sort((a,b)=>{
+    const av = String(a[exSortKey]||'').toLowerCase();
+    const bv = String(b[exSortKey]||'').toLowerCase();
+    return av<bv?-exSortDir:av>bv?exSortDir:0;
+  });
+
+  renderExpired();
+}
+
+function srtEx(k){ if(exSortKey===k) exSortDir*=-1; else{exSortKey=k;exSortDir=1;} goExpired(); }
+
+function clrExpired(){
+  ['ex-sub','ex-route','ex-year'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ex-q').value='';
+  goExpired();
+}
+
+function renderExpired(){
+  const tbody = document.getElementById('ex-tbody');
+  const empty = document.getElementById('ex-empty');
+  const sumbar= document.getElementById('ex-sumbar');
+
+  if(!exFiltered.length){ tbody.innerHTML=''; empty.style.display='block'; sumbar.innerHTML=''; return; }
+  empty.style.display='none';
+
+  const yr2025 = exFiltered.filter(r=>r.exp_year==='2025').length;
+  const yr2024 = exFiltered.filter(r=>r.exp_year==='2024').length;
+
+  tbody.innerHTML = exFiltered.map(r=>{
+    const yrs = r.years ? `<span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:${r.years>=5?'var(--green)':r.years>=2?'var(--amber)':'var(--muted)'}">${r.years} yr${r.years!==1?'s':''}</span>` : '—';
+    const expBadge = r.exp_year === '2025'
+      ? `<span style="font-size:10px;font-weight:600;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:20px;background:#FEF2F2;color:var(--red);border:1px solid #FECACA;">2025</span>`
+      : `<span style="font-size:10px;font-weight:600;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:20px;background:#F3F4F6;color:#9CA3AF;border:1px solid #E5E7EB;">2024</span>`;
+    return `<tr style="background:white;border-bottom:1px solid var(--border);">
+      <td><strong style="font-size:13px">${r.name||'—'}</strong></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;white-space:nowrap">${r.address}</td>
+      <td style="font-size:12px">${r.subdivision||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;text-align:center">${r.route}</td>
+      <td style="font-size:12px;white-space:nowrap">${r.scout||'—'}</td>
+      <td style="text-align:center">${expBadge}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${r.started||'—'}</td>
+      <td style="text-align:center">${yrs}</td>
+    </tr>`;
+  }).join('');
+
+  sumbar.innerHTML = `<span>Showing <strong>${exFiltered.length}</strong> of ${EXPIRED_DATA.length} non-renewed</span>
+    <span>📅 Expired 2025: <strong>${yr2025}</strong></span>
+    <span>📅 Expired 2024: <strong>${yr2024}</strong></span>`;
+}
+
+// ── ROUTE → SCOUT FALLBACK ────────────────────────────────────────────────────
+// If scout column is blank or broken (#REF!), recover from route code.
+// Built from the 2026 master spreadsheet.
+const ROUTE_SCOUT = {
+  'A':'Joshua Arnold','CC':'Logan Manning','CH':'Zoey Frahm',
+  'D':'Eva Guevara','DE':'Mason Langner','FL':'Eva Guevara',
+  'FR1':'Logan Manning','FR2':'Logan Manning','FR3':'Brayden Hafele',
+  'G':'Alan Torres','H':'Joey Guillemette','I':'Alan Torres',
+  'IG':'Zoey Frahm','J':'Alan Torres','K':'Logan Manning',
+  'KM':'Clara McGarvey','L':'Clara McGarvey','LFR':'Kate McNew',
+  'M':'Emmanuel Guevara','P':'Owen Pomerantz','PR':'Lorelei McGarvey',
+  'SC1':'Dylan Knigge','SC2':'Dylan Knigge','SE':'Zoey Frahm',
+  'SW':'Zoey Frahm','TP':'John Esbeck',
+};
+
+function resolveScout(scoutRaw, route){
+  if(!scoutRaw || scoutRaw.includes('#REF') || scoutRaw.trim() === '')
+    return ROUTE_SCOUT[route] || '';
+  return scoutRaw.trim();
+}
+
+// ── ROUTE LEGEND TOGGLE ───────────────────────────────────────────────────────
+function toggleRLeg(){
+  const grid = document.getElementById('rleg-grid');
+  const btn  = document.getElementById('rleg-btn');
+  grid.classList.toggle('visible');
+  btn.classList.toggle('open');
+}
+
+// ── HOLIDAY / CHECKBOX SYSTEM ─────────────────────────────────────────────────
+// Key format: flag|scout|holidayName|address
+// Auto-resets after each holiday date passes.
+
+const HOLIDAYS_RESET = [
+  {name:'Memorial Day',  date:new Date(2026,4,25)},
+  {name:'Flag Day',      date:new Date(2026,5,14)},
+  {name:'July 4th',      date:new Date(2026,6,4)},
+  {name:'Labor Day',     date:new Date(2026,8,7)},
+  {name:'Veterans Day',  date:new Date(2026,10,11)},
+];
+
+function currentHolidayKey(){
+  // The "active" holiday is the next upcoming one (flags go out before the date)
+  const today = new Date();
+  for(const h of HOLIDAYS_RESET){
+    if(today <= h.date) return h.name;
+  }
+  return HOLIDAYS_RESET[HOLIDAYS_RESET.length-1].name;
+}
+
+function cbKey(scout, address){
+  return `flag|${scout}|${currentHolidayKey()}|${address}`;
+}
+
+function isChecked(scout, address){
+  return localStorage.getItem(cbKey(scout, address)) === '1';
+}
+
+function toggleCheck(scout, address){
+  const k = cbKey(scout, address);
+  if(localStorage.getItem(k) === '1') localStorage.removeItem(k);
+  else localStorage.setItem(k, '1');
+  render();
+}
+
+// Auto-reset: clear any keys from past holidays that have fully passed
+// (more than 2 days after the holiday date — gives a buffer)
+function autoResetOldHolidays(){
+  const today = new Date();
+  const passed = HOLIDAYS_RESET
+    .filter(h => (today - h.date) > 2 * 86400000)
+    .map(h => h.name);
+  if(!passed.length) return;
+
+  const toDelete = [];
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith('flag|')){
+      const parts = k.split('|');
+      if(parts[2] && passed.includes(parts[2])) toDelete.push(k);
+    }
+  }
+  toDelete.forEach(k => localStorage.removeItem(k));
+}
+
+autoResetOldHolidays();
+
+// ── ROUTE OPTIMIZER ──────────────────────────────────────────────────────────
+// Skips already-checked stops. Starts from first unchecked.
+// Google Maps supports 10 waypoints max — chunks if needed.
+
+// ── ROUTE → CITY LOOKUP ───────────────────────────────────────────────────────
+// All subdivisions in this troop are in Friendswood TX 77546.
+// Appending city + zip prevents Google from geocoding ambiguous street names
+// (e.g. "Courtland Pl" exists in San Antonio too) to the wrong city.
+const ROUTE_CITY = {
+  'A':'Friendswood, TX 77546','AC':'Friendswood, TX 77546',
+  'CC':'Friendswood, TX 77546','CH':'Friendswood, TX 77546',
+  'CL':'Friendswood, TX 77546','D':'Friendswood, TX 77546',
+  'DE':'Friendswood, TX 77546','FL':'Friendswood, TX 77546',
+  'FR1':'Friendswood, TX 77546','FR2':'Friendswood, TX 77546',
+  'FR3':'Friendswood, TX 77546','G':'Friendswood, TX 77546',
+  'H':'Friendswood, TX 77546','I':'Friendswood, TX 77546',
+  'IG':'Friendswood, TX 77546','J':'Friendswood, TX 77546',
+  'K':'Friendswood, TX 77546','KM':'Friendswood, TX 77546',
+  'L':'Friendswood, TX 77546','LFR':'Friendswood, TX 77546',
+  'M':'Friendswood, TX 77546','P':'Friendswood, TX 77546',
+  'PR':'Friendswood, TX 77546','SC1':'Friendswood, TX 77546',
+  'SC2':'Friendswood, TX 77546','SE':'Friendswood, TX 77546',
+  'SE2':'Friendswood, TX 77546','SW':'Friendswood, TX 77546',
+  'TP':'Friendswood, TX 77546',
+};
+
+function geocodeAddress(r){
+  const city = ROUTE_CITY[r.route] || 'Friendswood, TX 77546';
+  return encodeURIComponent(r.address.trim() + ', ' + city);
+}
+
+// ── BATCH TRACKING ────────────────────────────────────────────────────────────
+// Stores the addresses of the current batch sent to Google Maps
+// so "Mark This Batch as Posted" knows exactly which stops to check off.
+let currentBatch = { scout: null, addresses: [] };
+
+function markBatchPosted(){
+  if(!currentBatch.scout || !currentBatch.addresses.length) return;
+  currentBatch.addresses.forEach(addr => {
+    localStorage.setItem(cbKey(currentBatch.scout, addr), '1');
+  });
+  currentBatch.addresses = []; // clear so button can't double-fire
+  render();
+}
+
+function buildRouteUrl(rows, scout){
+  const singleScout = !!scout;
+
+  // If single scout view, filter out checked stops
+  let pending = rows.filter(r => r.address && r.address.trim().length > 3);
+  if(singleScout){
+    pending = pending.filter(r => !isChecked(scout, r.address));
+  }
+
+  if(!pending.length) return { empty: true, total: rows.length };
+
+  const addrs = pending.map(r => r.address.trim());
+  const total = addrs.length;
+  const MAX = 10;
+  const batchAddrs = addrs.slice(0, MAX);
+  const batchRows  = pending.slice(0, MAX);
+  const encodedAddrs = batchRows.map(r => geocodeAddress(r));
+  const origin = encodedAddrs[0];
+  const destination = encodedAddrs[encodedAddrs.length-1];
+  const waypoints = encodedAddrs.slice(1,-1).join('|');
+
+  // Store batch so "Mark as Posted" knows which stops were sent
+  if(scout){
+    currentBatch = { scout, addresses: batchAddrs };
+  }
+
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+  if(waypoints) url += `&waypoints=${waypoints}`;
+  url += '&travelmode=driving';
+  return { url, total, shown: batchAddrs.length, empty: false };
+}
+
+function updateRouteBar(){
+  const bar  = document.getElementById('route-bar');
+  const link = document.getElementById('route-link');
+  const note = document.getElementById('route-note');
+  const prog = document.getElementById('progress-wrap');
+  const scout = document.getElementById('f-scout').value;
+
+  if(!scout || filtered.length === 0){
+    bar.style.display = 'none';
+    prog.classList.remove('visible');
+    return;
+  }
+
+  // Progress bar
+  const total    = filtered.length;
+  const done     = filtered.filter(r => isChecked(scout, r.address)).length;
+  const pct      = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progress-text').textContent = `${done} / ${total}`;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  const firstUnchecked = filtered.find(r => !isChecked(scout, r.address));
+  document.getElementById('resume-note').textContent =
+    done === total ? '✅ All flags posted for this holiday!' :
+    firstUnchecked ? `▶ Resuming from: ${firstUnchecked.address}` : '';
+  prog.classList.add('visible');
+
+  // Route button
+  const result = buildRouteUrl(filtered, scout);
+  if(result.empty){
+    link.textContent = '✅ All stops complete!';
+    link.removeAttribute('href');
+    link.style.background = '#6B7280';
+    document.getElementById('mark-batch-btn').style.display = 'none';
+    note.textContent = 'All flags posted for this holiday. Reset will happen automatically after the holiday passes.';
+    bar.style.display = 'flex';
+    return;
+  }
+
+  link.textContent = `🗺 Open Route in Google Maps (${result.shown} stop${result.shown>1?'s':''})`;
+  link.href = result.url;
+  link.style.background = '';
+  document.getElementById('mark-batch-btn').style.display = '';
+
+  let noteText = '';
+  if(done > 0) noteText += `Skipping ${done} already-posted stop${done>1?'s':''} · `;
+  if(result.total > 10){
+    noteText += `⚠ ${result.total} stops remaining — showing next 10. Tap "✓ Mark This Batch as Posted" when done, then open Maps again for the next batch.`;
+  } else {
+    noteText += `${result.shown} remaining · open Maps → tap "Optimize" → post flags → tap "✓ Mark This Batch as Posted"`;
+  }
+  note.textContent = noteText;
+  bar.style.display = 'flex';
+}
+
+function go(){
+  const scout  = document.getElementById('f-scout').value;
+  const status = document.getElementById('f-status').value;
+  const rn     = document.getElementById('f-rn').value;
+  const mm     = document.getElementById('f-mm').value;
+  const q      = document.getElementById('f-q').value.toLowerCase();
+
+  filtered = ALL_DATA.filter(r=>{
+    if(scout && r.scout !== scout) return false;
+    if(status && r.pay_status !== status) return false;
+    if(rn && r.rn !== rn) return false;
+    if(mm === 'yes' && !r.mismatch) return false;
+    if(q && !r.name.toLowerCase().includes(q) && !r.address.toLowerCase().includes(q) && !r.email.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if(sortKey) filtered.sort((a,b)=>{
+    const av=(a[sortKey]||'').toLowerCase(), bv=(b[sortKey]||'').toLowerCase();
+    return av<bv?-sortDir:av>bv?sortDir:0;
+  });
+
+  render();
+}
+
+function srt(k){ if(sortKey===k) sortDir*=-1; else{sortKey=k;sortDir=1;} go(); }
+
+function clrFilters(){
+  ['f-scout','f-status','f-rn','f-mm'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-q').value='';
+  go();
+}
+
+const PL = {paid:'PAID',watch:'FOLLOW UP',mailed:'MAILED',pickup:'PICK UP'};
+const RC = {paid:'rpd',watch:'rw',mailed:'rm',pickup:'rp'};
+
+function render(){
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty');
+  const paid  = filtered.filter(r=>r.pay_status==='paid').length;
+  const watch = filtered.filter(r=>r.pay_status!=='paid').length;
+  const mm    = filtered.filter(r=>r.mismatch).length;
+  const nw    = filtered.filter(r=>r.rn==='New').length;
+
+  document.getElementById('s-tot').textContent  = filtered.length;
+  document.getElementById('s-paid').textContent = paid;
+  document.getElementById('s-watch').textContent= watch;
+  document.getElementById('s-mm').textContent   = mm;
+  document.getElementById('s-new').textContent  = nw;
+
+  const scout = document.getElementById('f-scout').value;
+  const showCb = !!scout;
+  document.getElementById('th-flag').style.display = showCb ? '' : 'none';
+
+  if(!filtered.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  tbody.innerHTML = filtered.map((r,i)=>{
+    const ps     = r.pay_status;
+    const is27   = r.correct_last && r.correct_last.includes("'27");
+    const holStyle = is27 ? 'color:var(--orange);font-weight:600' : '';
+    const holText  = r.correct_first ? `<span style="${holStyle}">${r.correct_first} → ${r.correct_last||'?'}</span>` : '—';
+    const mmPill   = r.mismatch ? `<div class="mmpill">⚠ SS: ${r.first_hol_ss||'?'}</div>` : '';
+    const dt       = r.date_parsed ? r.date_parsed.slice(5).replace('-','/') : '—';
+    const checked  = scout ? isChecked(scout, r.address) : false;
+    const cbCol    = showCb ? `<td class="flag-col">
+      <div class="flag-cb-wrap">
+        <div class="flag-cb ${checked?'checked':''}" onclick="toggleCheck('${scout.replace(/'/g,"\\'")}','${r.address.replace(/'/g,"\\'")}')">
+          ${checked ? '✓' : ''}
+        </div>
+        <div class="flag-cb-label">${checked ? 'Posted' : 'Tap when<br>posted'}</div>
+      </div>
+    </td>` : '';
+    const rowCls = (RC[ps]||'rpd') + (checked ? ' done-row' : '');
+    return `<tr class="${rowCls}">
+      ${cbCol}
+      <td><strong style="font-size:13px">${r.name||'—'}</strong><br><span style="font-size:11px;color:var(--muted)">${r.subdivision}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;white-space:nowrap">${r.address}</td>
+      <td style="font-size:12px;white-space:nowrap">${r.scout}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;text-align:center">${r.route}</td>
+      <td class="contact">${r.phone?`<span>${r.phone}</span>`:''}${r.email?`<a href="mailto:${r.email}">${r.email}</a>`:''}</td>
+      <td><span class="badge ${ps}">${PL[ps]||ps.toUpperCase()}</span><br><span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${r.pay_display}</span></td>
+      <td><span class="badge ${r.rn==='New'?'new':'renewal'}">${r.rn.toUpperCase()}</span></td>
+      <td>${holText}${mmPill}</td>
+      <td style="font-size:12px;white-space:nowrap">${r.correct_last||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap">${r.payment_date_display||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap">${r.started_display||'—'}</td>
+      <td style="text-align:center;">
+        ${r.years ? `<span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:${r.years>=5?'var(--green)':r.years>=2?'var(--amber)':'var(--muted)'}">${r.years} yr${r.years!==1?'s':''}</span>` : '—'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('sumbar').innerHTML =
+    `<span>Showing <strong>${filtered.length}</strong> of ${ALL_DATA.length} total</span>
+     <span>💰 Paid: <strong>${paid}</strong></span>
+     <span>⚠ Follow up: <strong>${watch}</strong></span>
+     <span>📅 Holiday adjustments: <strong>${mm}</strong></span>`;
+
+  updateRouteBar();
+}
+</script>
+</body>
+</html>
